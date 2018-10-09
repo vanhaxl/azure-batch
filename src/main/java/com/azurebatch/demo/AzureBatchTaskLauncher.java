@@ -63,7 +63,7 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
 //        String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
 //                .replace(":", "-");
-        String taskId = "test_promotion";
+        String taskId = "test_azure0";
 
         if (taskId.length()>64){
             taskId = taskId.substring(taskId.length()-64);
