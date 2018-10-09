@@ -1,4 +1,4 @@
-package com.azurebatch.demo;
+package com.azurebatch.tasklauncher;
 
 import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.protocol.models.ContainerRegistry;
@@ -11,13 +11,16 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @Component
+@Profile("!local")
 public class AzureBatchTaskLauncher implements TaskLauncher {
 
     @Autowired
@@ -32,13 +35,16 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
     @Value("${docker-container-registry-password}")
     private String containerRegistryPassword;
 
+    @Value("${spring.profiles.active}")
+    private String profiles;
+
     @Override
     public String launch(AppDeploymentRequest appDeploymentRequest) {
 
         StringBuilder runOptionBuilder = new StringBuilder().append("--rm ");
 
         //String newProfile = System.getenv("SPRING_PROFILES_ACTIVE").replace("manager", "worker");
-        String newProfile = "worker";
+        String newProfile = profiles.replace("manager",  "worker");
         runOptionBuilder.append("-e SPRING_PROFILES_ACTIVE=" + newProfile + " ");
 
         Map<String, String> environmentVariables = appDeploymentRequest.getDefinition().getProperties();
@@ -59,11 +65,14 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
         // Create job run at the specified pool
         // String jobId = System.getenv("AZ_BATCH_JOB_ID");
-        String jobId = "dev-promotion-job";
+
+        String jobId = "test-azurebatch-job" ;
 
 //        String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
 //                .replace(":", "-");
-        String taskId = "test_azure0";
+        Random ran = new Random();
+        int x = ran.nextInt(1000) + 0;
+        String taskId = "test_task_azure_" + x;
 
         if (taskId.length()>64){
             taskId = taskId.substring(taskId.length()-64);

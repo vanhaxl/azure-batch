@@ -1,4 +1,4 @@
-package com.azurebatch.demo;
+package com.azurebatch.config;
 
 import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.auth.BatchSharedKeyCredentials;

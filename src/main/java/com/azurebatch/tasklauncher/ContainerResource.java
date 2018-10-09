@@ -1,4 +1,4 @@
-package com.azurebatch.demo;
+package com.azurebatch.tasklauncher;
 
 import org.springframework.core.io.AbstractResource;
 
