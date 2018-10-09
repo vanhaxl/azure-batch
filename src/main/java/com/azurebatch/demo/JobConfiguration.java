@@ -92,7 +92,7 @@ public class JobConfiguration {
     @Bean
     public PartitionHandler partitionHandler(TaskLauncher taskLauncher, JobExplorer jobExplorer) throws Exception {
         //Resource resource = resourceLoader.getResource("maven://io.spring.cloud:partitioned-batch-job:1.1.0.RELEASE");
-        //Resource resource = resourceLoader.getResource("file:/Users/vanhanguyen/Desktop/tmp/partitioned-batch-job-2.0.1.BUILD-SNAPSHOT.jar");
+        //Resource resource = resourceLoader.getResource("file:/Users/vanhanguyen/Desktop/tmp/demo-0.0.1-SNAPSHOT.jar");
 
         Resource resource = new ContainerResource(containerName);
 
@@ -133,7 +133,6 @@ public class JobConfiguration {
     @Bean
     @Profile("worker")
     public DeployerStepExecutionHandler stepExecutionHandler(JobExplorer jobExplorer) {
-        System.out.println("vanha-deployerStepExecutionHandler");
         return new DeployerStepExecutionHandler(this.context, jobExplorer, this.jobRepository);
     }
 
@@ -163,7 +162,6 @@ public class JobConfiguration {
 
     @Bean
     public Step workerStep() {
-        System.out.println("vanha - slave - worker step here");
         return stepBuilderFactory.get("workerStep")
                 .tasklet(workerTasklet(null))
                 .build();
@@ -172,7 +170,6 @@ public class JobConfiguration {
     @Bean
     @Profile("!worker")
     public Job partitionedJob(PartitionHandler partitionHandler) throws Exception {
-        System.out.println("vanha - master - work here");
         Random random = new Random();
         return jobBuilderFactory.get("partitionedJob" + random.nextInt())
                 .start(step1(partitionHandler))
