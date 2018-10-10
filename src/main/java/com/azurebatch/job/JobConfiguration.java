@@ -90,10 +90,10 @@ public class JobConfiguration extends BaseJobConfig {
         return new Partitioner() {
             @Override
             public Map<String, ExecutionContext> partition(int gridSize) {
-
+                System.out.println("grid sizre: " + gridSize);
                 Map<String, ExecutionContext> partitions = new HashMap<>(gridSize);
 
-                for (int i = 0; i < GRID_SIZE; i++) {
+                for (int i = 0; i < gridSize; i++) {
                     ExecutionContext context1 = new ExecutionContext();
                     context1.put("partitionNumber", i);
 

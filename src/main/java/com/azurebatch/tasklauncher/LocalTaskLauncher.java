@@ -21,10 +21,13 @@ public class LocalTaskLauncher implements TaskLauncher {
 
     @Override
     public String launch(AppDeploymentRequest appDeploymentRequest) {
+        System.out.println("-----run launch local--------");
         Map<String, String> environmentVariables = appDeploymentRequest.getDefinition().getProperties();
 
         String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
                 .replace(":", "-");
+
+        System.out.println("task id is: " + taskId);
 
         StringBuilder runOptionBuilder = new StringBuilder().append("Worker: " + taskId + "\n");
         for (Map.Entry<String, String> entry:environmentVariables.entrySet()){
