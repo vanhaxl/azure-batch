@@ -50,13 +50,13 @@ import java.util.*;
 
 
 @Configuration
-@Profile("vhnguyen")
+@Profile("jobA")
 public class JobConfiguration extends BaseJobConfig {
 
     @Autowired
     private Environment environment;
 
-    @Value("${docker-container-name}")
+    @Value("${docker-container-name:none}")
     private String dockerContainerName;
 
     private static final int GRID_SIZE = 4;

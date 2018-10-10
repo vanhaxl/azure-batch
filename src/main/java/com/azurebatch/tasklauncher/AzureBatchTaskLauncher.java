@@ -35,16 +35,12 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
     @Value("${docker-container-registry-password}")
     private String containerRegistryPassword;
 
-//    @Value("${spring.profiles.active}")
-//    private String profiles;
-
     @Override
     public String launch(AppDeploymentRequest appDeploymentRequest) {
 
         StringBuilder runOptionBuilder = new StringBuilder().append("--rm ");
 
         String newProfile = System.getenv("SPRING_PROFILES_ACTIVE").replace("manager", "worker");
-        //String newProfile = profiles.replace("manager",  "worker");
         runOptionBuilder.append("-e SPRING_PROFILES_ACTIVE=" + newProfile + " ");
 
         Map<String, String> environmentVariables = appDeploymentRequest.getDefinition().getProperties();
