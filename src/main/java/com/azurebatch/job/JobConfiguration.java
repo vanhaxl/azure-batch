@@ -90,7 +90,6 @@ public class JobConfiguration extends BaseJobConfig {
         return new Partitioner() {
             @Override
             public Map<String, ExecutionContext> partition(int gridSize) {
-                System.out.println("grid sizre: " + gridSize);
                 Map<String, ExecutionContext> partitions = new HashMap<>(gridSize);
 
                 for (int i = 0; i < gridSize; i++) {
@@ -137,8 +136,8 @@ public class JobConfiguration extends BaseJobConfig {
                 .build();
     }
 
-    @Bean
-    public Job job(PartitionHandler partitionHandler) throws Exception {
+    @Bean(name="jobA")
+    public Job testJob(PartitionHandler partitionHandler) throws Exception {
         Random random = new Random();
         return jobBuilderFactory.get("partitionedJob" + random.nextInt())
                 .start(step1(partitionHandler))

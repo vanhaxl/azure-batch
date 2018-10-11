@@ -8,8 +8,8 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @ComponentScan(basePackages = "com.azurebatch")
-@EnableBatchProcessing
 @EnableTask
+@EnableBatchProcessing
 public class PartitionedBatchJobApplication {
 
 	public static void main(String[] args) {
