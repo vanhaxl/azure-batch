@@ -11,6 +11,7 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import org.springframework.cloud.task.batch.partition.DeployerPartitionHandler;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -42,9 +43,10 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
         String newProfile = System.getenv("SPRING_PROFILES_ACTIVE").replace("manager", "worker");
         runOptionBuilder.append("-e SPRING_PROFILES_ACTIVE=" + newProfile + " ");
+        //runOptionBuilder.append("-e dockerImageName=" + System.getenv("dockerImageName") + " ");
 
         Map<String, String> environmentVariables = appDeploymentRequest.getDefinition().getProperties();
-        for (Map.Entry<String, String> entry:environmentVariables.entrySet()){
+        for (Map.Entry<String, String> entry : environmentVariables.entrySet()) {
             runOptionBuilder.append("-e \"" + entry.getKey().replaceAll("\\.|-", "_").toUpperCase() + "=" + entry.getValue() + "\" ");
         }
 
@@ -62,16 +64,16 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
         // Create job run at the specified pool
         // String jobId = System.getenv("AZ_BATCH_JOB_ID");
 
-        String jobId = "test-azurebatch-job" ;
+        String jobId = "test-azurebatch-job";
 
-//        String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
-//                .replace(":", "-");
-        Random ran = new Random();
-        int x = ran.nextInt(1000000) + 0;
-        String taskId = "test_task_azure_" + x;
+        String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
+                .replace(":", "-");
+//        Random ran = new Random();
+//        int x = ran.nextInt(1000000) + 0;
+//        String taskId = "test_task_azure_" + x;
 
-        if (taskId.length()>64){
-            taskId = taskId.substring(taskId.length()-64);
+        if (taskId.length() > 64) {
+            taskId = taskId.substring(taskId.length() - 64);
         }
 
         try {
@@ -91,24 +93,24 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
     @Override
     public void cancel(String id) {
-        System.out.println("calling azure batch cancel :"+id);
+        System.out.println("calling azure batch cancel :" + id);
     }
 
     @Override
     public TaskStatus status(String id) {
-        System.out.println("calling azure batch status :"+id);
+        System.out.println("calling azure batch status :" + id);
         return new TaskStatus(id, LaunchState.unknown, new HashMap<>());
     }
 
     @Override
     public void cleanup(String id) {
-        System.out.println("calling azure batch cleaning up :"+id);
+        System.out.println("calling azure batch cleaning up :" + id);
 
     }
 
     @Override
     public void destroy(String id) {
-        System.out.println("calling azure batch destroying :"+id);
+        System.out.println("calling azure batch destroying :" + id);
     }
 
     @Override

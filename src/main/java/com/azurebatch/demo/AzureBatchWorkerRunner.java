@@ -1,5 +1,8 @@
 package com.azurebatch.demo;
 
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -14,8 +17,13 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.cloud.task.batch.partition.DeployerPartitionHandler;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
@@ -41,6 +49,9 @@ public class AzureBatchWorkerRunner implements CommandLineRunner {
     @Autowired
     private Job job;
 
+    @Autowired
+    private ResourceLoader resourceLoader;
+
     @Override
     public void run(String... args) {
 
@@ -55,17 +66,17 @@ public class AzureBatchWorkerRunner implements CommandLineRunner {
         }
     }
 
-    private void runManager() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+    private void runManager() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, IOException, XmlPullParserException {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis()) // this is to make it as a new instance of the job so that it can run again.
                 .toJobParameters();
-        System.out.println("----run Manager ---------");
-
+        System.out.println("-------run manager 0.0.4 ----------");
         jobLauncher.run(job, jobParameters);
     }
 
+
     private void runWorker() throws Exception {
-        System.out.println("-------run worker ----------");
+        System.out.println("-------run worker 0.0.4 ----------");
         BeanFactoryStepLocator stepLocator = new BeanFactoryStepLocator();
         stepLocator.setBeanFactory(configurableApplicationContext);
         Long jobExecutionId = Long.parseLong(environment.getProperty(DeployerPartitionHandler.SPRING_CLOUD_TASK_JOB_EXECUTION_ID.replaceAll("\\.|-", "_").toUpperCase()));
@@ -78,7 +89,9 @@ public class AzureBatchWorkerRunner implements CommandLineRunner {
             Step step = stepLocator.getStep(stepName);
 
             try {
+                System.out.println("----start step execution");
                 step.execute(stepExecution);
+                System.out.println("----complete step execution");
             } catch (JobInterruptedException e) {
                 stepExecution.setStatus(BatchStatus.STOPPED);
                 jobRepository.update(stepExecution);
