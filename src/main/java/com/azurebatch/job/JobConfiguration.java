@@ -52,7 +52,7 @@ public class JobConfiguration extends BaseJobConfig {
     @Autowired
     private Environment environment;
 
-    private static final int GRID_SIZE = 4;
+    private static final int GRID_SIZE = 1;
 
     @Value("${docker-container-name}")
     private String dockerImageName;
@@ -113,6 +113,7 @@ public class JobConfiguration extends BaseJobConfig {
         return new Tasklet() {
             @Override
             public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step 1 Tasklet");
                 System.out.println("This tasklet ran partition: " + partitionNumber);
 
                 return RepeatStatus.FINISHED;
@@ -121,14 +122,14 @@ public class JobConfiguration extends BaseJobConfig {
     }
 
     //master step
-    @Bean
-    public Step step1(PartitionHandler partitionHandler) throws Exception {
-        return stepBuilderFactory.get("step1")
-                .partitioner(workerStep().getName(), partitioner())
-                .step(workerStep())
-                .partitionHandler(partitionHandler)
-                .build();
-    }
+//    @Bean
+//    public Step step1(PartitionHandler partitionHandler) throws Exception {
+//        return stepBuilderFactory.get("step1")
+//                .partitioner(workerStep().getName(), partitioner())
+//                .step(workerStep())
+//                .partitionHandler(partitionHandler)
+//                .build();
+//    }
 
     //slave step
     @Bean
@@ -138,11 +139,115 @@ public class JobConfiguration extends BaseJobConfig {
                 .build();
     }
 
+//    @Bean(name = "jobA")
+//    public Job testJob(PartitionHandler partitionHandler) throws Exception {
+//        Random random = new Random();
+//        return jobBuilderFactory.get("partitionedJob" + random.nextInt())
+//                .start(step1())
+//                .next(step2()).on("FAILED").to(stepRestore())
+//                .next(step3())
+//                .next(step4()).on("*").to(stepRestore()).end()
+//                .build();
+//    }
+
     @Bean(name = "jobA")
     public Job testJob(PartitionHandler partitionHandler) throws Exception {
         Random random = new Random();
         return jobBuilderFactory.get("partitionedJob" + random.nextInt())
-                .start(step1(partitionHandler))
+                .start(step1())
+                .next(step2())
+                .next(step3()).on("COMPLETED").to(step4())
+                .from(step3()).on("FAILED").to(stepRestore()).end()
                 .build();
+    }
+
+
+    @Bean
+    public Step step1() {
+        return stepBuilderFactory.get("step1").tasklet(step1Tasklet()).build();
+    }
+
+    @Bean
+    public Step step2() {
+        return stepBuilderFactory.get("step2").tasklet(step2Tasklet()).build();
+    }
+
+    @Bean
+    public Step step3() {
+        return stepBuilderFactory.get("step3").tasklet(step3Tasklet()).build();
+    }
+
+    @Bean
+    public Step step4() {
+        return stepBuilderFactory.get("step4").tasklet(step4Tasklet()).build();
+    }
+
+    @Bean
+    public Step stepRestore() {
+        return stepBuilderFactory.get("stepRestore").tasklet(stepRestoreTasklet()).build();
+    }
+
+    @Bean
+    @StepScope
+    public Tasklet step1Tasklet() {
+        return new Tasklet() {
+            @Override
+            public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step 11111 Tasklet");
+
+                return RepeatStatus.FINISHED;
+            }
+        };
+    }
+
+    @Bean
+    @StepScope
+    public Tasklet step2Tasklet() {
+        return new Tasklet() {
+            @Override
+            public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step 22222 Tasklet");
+
+                return RepeatStatus.FINISHED;
+            }
+        };
+    }
+
+    @Bean
+    @StepScope
+    public Tasklet step3Tasklet() {
+        return new Tasklet() {
+            @Override
+            public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step 33333 Tasklet");
+                throw new Exception("This is Exception in step");
+                //return RepeatStatus.FINISHED;
+            }
+        };
+    }
+
+    @Bean
+    @StepScope
+    public Tasklet step4Tasklet() {
+        return new Tasklet() {
+            @Override
+            public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step 44444 Tasklet");
+
+                return RepeatStatus.FINISHED;
+            }
+        };
+    }
+
+    @Bean
+    @StepScope
+    public Tasklet stepRestoreTasklet() {
+        return new Tasklet() {
+            @Override
+            public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+                System.out.println("This is step Restore Tasklet");
+                return RepeatStatus.FINISHED;
+            }
+        };
     }
 }

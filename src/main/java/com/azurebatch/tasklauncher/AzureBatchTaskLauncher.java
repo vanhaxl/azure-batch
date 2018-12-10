@@ -41,8 +41,8 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
         StringBuilder runOptionBuilder = new StringBuilder().append("--rm ");
 
-        String newProfile = System.getenv("SPRING_PROFILES_ACTIVE").replace("manager", "worker");
-        runOptionBuilder.append("-e SPRING_PROFILES_ACTIVE=" + newProfile + " ");
+        String newProfile = System.getenv("spring.profiles.active").replace("manager", "worker");
+        runOptionBuilder.append("-e spring.profiles.active=" + newProfile + " ");
         //runOptionBuilder.append("-e dockerImageName=" + System.getenv("dockerImageName") + " ");
 
         Map<String, String> environmentVariables = appDeploymentRequest.getDefinition().getProperties();
