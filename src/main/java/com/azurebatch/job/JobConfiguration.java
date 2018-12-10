@@ -52,7 +52,7 @@ public class JobConfiguration extends BaseJobConfig {
     @Autowired
     private Environment environment;
 
-    private static final int GRID_SIZE = 4;
+    private static final int GRID_SIZE = 20;
 
     @Value("${docker-container-name}")
     private String dockerImageName;
@@ -78,7 +78,7 @@ public class JobConfiguration extends BaseJobConfig {
         partitionHandler.setEnvironmentVariablesProvider(environmentVariablesProvider);
 
         //monitor workers every 5s and see if they are completed
-        partitionHandler.setPollInterval(5000);
+        partitionHandler.setPollInterval(10);
         partitionHandler.setGridSize(GRID_SIZE);
         partitionHandler.setApplicationName("vanhanguyen-test-app");
         partitionHandler.afterPropertiesSet();
