@@ -4,7 +4,6 @@ import com.azurebatch.config.BlobRepositoryManagerBase;
 import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.protocol.models.*;
 import com.microsoft.azure.storage.StorageException;
-import com.microsoft.azure.storage.blob.BlobContainerPermissions;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.SharedAccessBlobPermissions;
 import com.microsoft.azure.storage.blob.SharedAccessBlobPolicy;
@@ -22,6 +21,10 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Component
@@ -74,13 +77,22 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
         String taskId = environmentVariables.get(DeployerPartitionHandler.SPRING_CLOUD_TASK_NAME)
                 .replace(":", "-");
-//        Random ran = new Random();
-//        int x = ran.nextInt(1000000) + 0;
-//        String taskId = "test_task_azure_" + x;
 
         if (taskId.length() > 64) {
             taskId = taskId.substring(taskId.length() - 64);
         }
+
+        /* ------------------start------------------ */
+
+        // calculate Start Time
+        LocalDateTime now = LocalDateTime.now();
+        Instant result = now.minusDays(1).atZone(ZoneOffset.UTC).toInstant();
+        Date startTime = Date.from(result);
+
+        // calculate Expiration Time
+        now = LocalDateTime.now();
+        result = now.plusDays(10).atZone(ZoneOffset.UTC).toInstant();
+        Date expirationTime = Date.from(result);
 
         OutputFileUploadCondition outputFileUploadCondition = OutputFileUploadCondition.TASK_COMPLETION;
         OutputFileUploadOptions outputFileUploadOptions = new OutputFileUploadOptions().withUploadCondition(outputFileUploadCondition);
@@ -88,60 +100,61 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
         CloudBlobContainer cloudBlobContainer = null;
         try {
             cloudBlobContainer = blobRepositoryManagerBase.getStorageBlobClient().getContainerReference("logs");
+            cloudBlobContainer.createIfNotExists();
         } catch (URISyntaxException e) {
             e.printStackTrace();
         } catch (StorageException e) {
             e.printStackTrace();
         }
 
-//        string containerSasToken = container.GetSharedAccessSignature(new SharedAccessBlobPolicy()
-//        {
-//            SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1),
-//            Permissions = SharedAccessBlobPermissions.Write
-//        });
-
-        BlobContainerPermissions permissions = new BlobContainerPermissions();
-
-        // define a Read-only base policy for downloads
-        SharedAccessBlobPolicy readPolicy = new SharedAccessBlobPolicy();
-        readPolicy.setPermissions(EnumSet.of(SharedAccessBlobPermissions.READ));
-        permissions.getSharedAccessPolicies().put("DownloadPolicy", readPolicy);
-
         // define a base policy that allows writing for uploads
         SharedAccessBlobPolicy writePolicy = new SharedAccessBlobPolicy();
-        writePolicy.setPermissions(EnumSet.of(SharedAccessBlobPermissions.READ, SharedAccessBlobPermissions.WRITE, SharedAccessBlobPermissions.CREATE));
-        permissions.getSharedAccessPolicies().put("UploadPolicy", writePolicy);
+        writePolicy.setPermissions(EnumSet.of(SharedAccessBlobPermissions.WRITE, SharedAccessBlobPermissions.CREATE));
+
+        writePolicy.setSharedAccessStartTime(startTime);
+        writePolicy.setSharedAccessExpiryTime(expirationTime);
+
         String containerSasToken = "";
+
         try {
-            containerSasToken = cloudBlobContainer.generateSharedAccessSignature(writePolicy, "UploadPolicy");
+            containerSasToken = cloudBlobContainer.generateSharedAccessSignature(writePolicy, null);
         } catch (InvalidKeyException e) {
             e.printStackTrace();
         } catch (StorageException e) {
             e.printStackTrace();
         }
+        /*-----------------end----------------*/
+
 
         String containerSasUrl = "";
         if (cloudBlobContainer != null) {
-            try {
-                cloudBlobContainer.createIfNotExists();
-            } catch (StorageException e) {
-                e.printStackTrace();
-            }
-            containerSasUrl = cloudBlobContainer.getStorageUri().getPrimaryUri().toString() ;//+ containerSasToken;
-
+            containerSasUrl = cloudBlobContainer.getStorageUri().getPrimaryUri().toString() + "?" + containerSasToken;
         }
-        System.out.println("van ha: " + containerSasUrl);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyMMdd");
+        StringBuilder pathStringBuilder = new StringBuilder();
+        pathStringBuilder.append("AZBatchLogs-");
+        pathStringBuilder.append(now.format(formatter));
+
+        StringBuilder pathStdout = new StringBuilder(pathStringBuilder);
+        pathStdout.append("/");
+        pathStdout.append("stdout_");
+        pathStdout.append(taskId);
+
+        StringBuilder pathStderr = new StringBuilder(pathStringBuilder);
+        pathStderr.append("/");
+        pathStderr.append("stderr_");
+        pathStderr.append(taskId);
 
         OutputFileBlobContainerDestination outputFileBlobContainerDestination = new OutputFileBlobContainerDestination()
                 .withContainerUrl(containerSasUrl)
-                .withPath("log1.txt");
+                .withPath(pathStdout.toString());
         OutputFileBlobContainerDestination outputFileBlobContainerDestination2 = new OutputFileBlobContainerDestination()
                 .withContainerUrl(containerSasUrl)
-                .withPath("log2.txt");
+                .withPath(pathStderr.toString());
         OutputFileDestination outputFileDestination = new OutputFileDestination().withContainer(outputFileBlobContainerDestination);
         OutputFileDestination outputFileDestination2 = new OutputFileDestination().withContainer(outputFileBlobContainerDestination2);
-        OutputFile file1 = new OutputFile().withFilePattern("stdout.txt").withDestination(outputFileDestination).withUploadOptions(outputFileUploadOptions);
-        OutputFile file2 = new OutputFile().withFilePattern("stderr.txt").withDestination(outputFileDestination2).withUploadOptions(outputFileUploadOptions);
+        OutputFile file1 = new OutputFile().withFilePattern("../stdout.txt").withDestination(outputFileDestination).withUploadOptions(outputFileUploadOptions);
+        OutputFile file2 = new OutputFile().withFilePattern("../stderr.txt").withDestination(outputFileDestination2).withUploadOptions(outputFileUploadOptions);
 
         List<OutputFile> outputFiles = new ArrayList<>();
         outputFiles.add(file1);
@@ -161,6 +174,7 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
         return taskId;
     }
+
 
     @Override
     public void cancel(String id) {
