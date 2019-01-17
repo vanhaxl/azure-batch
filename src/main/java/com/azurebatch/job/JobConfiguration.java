@@ -52,7 +52,7 @@ public class JobConfiguration extends BaseJobConfig {
     @Autowired
     private Environment environment;
 
-    private static final int GRID_SIZE = 20;
+    private static final int GRID_SIZE = 2;
 
     @Value("${docker-container-name}")
     private String dockerImageName;

@@ -1,9 +1,13 @@
 package com.azurebatch.tasklauncher;
 
+import com.azurebatch.config.BlobRepositoryManagerBase;
 import com.microsoft.azure.batch.BatchClient;
-import com.microsoft.azure.batch.protocol.models.ContainerRegistry;
-import com.microsoft.azure.batch.protocol.models.TaskAddParameter;
-import com.microsoft.azure.batch.protocol.models.TaskContainerSettings;
+import com.microsoft.azure.batch.protocol.models.*;
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.blob.BlobContainerPermissions;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
+import com.microsoft.azure.storage.blob.SharedAccessBlobPermissions;
+import com.microsoft.azure.storage.blob.SharedAccessBlobPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
@@ -16,9 +20,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.net.URISyntaxException;
+import java.security.InvalidKeyException;
+import java.util.*;
 
 @Component
 @Profile("!local")
@@ -35,6 +39,9 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
 
     @Value("${docker-container-registry-password}")
     private String containerRegistryPassword;
+
+    @Autowired
+    private BlobRepositoryManagerBase blobRepositoryManagerBase;
 
     @Override
     public String launch(AppDeploymentRequest appDeploymentRequest) {
@@ -75,13 +82,78 @@ public class AzureBatchTaskLauncher implements TaskLauncher {
             taskId = taskId.substring(taskId.length() - 64);
         }
 
-        try {
-            batchClient.taskOperations().createTask(jobId,
-                    new TaskAddParameter().withId(taskId)
-                            .withContainerSettings(containerSettings)
-                            .withCommandLine("echo " + taskId + " Start")
+        OutputFileUploadCondition outputFileUploadCondition = OutputFileUploadCondition.TASK_COMPLETION;
+        OutputFileUploadOptions outputFileUploadOptions = new OutputFileUploadOptions().withUploadCondition(outputFileUploadCondition);
 
-            );
+        CloudBlobContainer cloudBlobContainer = null;
+        try {
+            cloudBlobContainer = blobRepositoryManagerBase.getStorageBlobClient().getContainerReference("logs");
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (StorageException e) {
+            e.printStackTrace();
+        }
+
+//        string containerSasToken = container.GetSharedAccessSignature(new SharedAccessBlobPolicy()
+//        {
+//            SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1),
+//            Permissions = SharedAccessBlobPermissions.Write
+//        });
+
+        BlobContainerPermissions permissions = new BlobContainerPermissions();
+
+        // define a Read-only base policy for downloads
+        SharedAccessBlobPolicy readPolicy = new SharedAccessBlobPolicy();
+        readPolicy.setPermissions(EnumSet.of(SharedAccessBlobPermissions.READ));
+        permissions.getSharedAccessPolicies().put("DownloadPolicy", readPolicy);
+
+        // define a base policy that allows writing for uploads
+        SharedAccessBlobPolicy writePolicy = new SharedAccessBlobPolicy();
+        writePolicy.setPermissions(EnumSet.of(SharedAccessBlobPermissions.READ, SharedAccessBlobPermissions.WRITE, SharedAccessBlobPermissions.CREATE));
+        permissions.getSharedAccessPolicies().put("UploadPolicy", writePolicy);
+        String containerSasToken = "";
+        try {
+            containerSasToken = cloudBlobContainer.generateSharedAccessSignature(writePolicy, "UploadPolicy");
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (StorageException e) {
+            e.printStackTrace();
+        }
+
+        String containerSasUrl = "";
+        if (cloudBlobContainer != null) {
+            try {
+                cloudBlobContainer.createIfNotExists();
+            } catch (StorageException e) {
+                e.printStackTrace();
+            }
+            containerSasUrl = cloudBlobContainer.getStorageUri().getPrimaryUri().toString() ;//+ containerSasToken;
+
+        }
+        System.out.println("van ha: " + containerSasUrl);
+
+        OutputFileBlobContainerDestination outputFileBlobContainerDestination = new OutputFileBlobContainerDestination()
+                .withContainerUrl(containerSasUrl)
+                .withPath("log1.txt");
+        OutputFileBlobContainerDestination outputFileBlobContainerDestination2 = new OutputFileBlobContainerDestination()
+                .withContainerUrl(containerSasUrl)
+                .withPath("log2.txt");
+        OutputFileDestination outputFileDestination = new OutputFileDestination().withContainer(outputFileBlobContainerDestination);
+        OutputFileDestination outputFileDestination2 = new OutputFileDestination().withContainer(outputFileBlobContainerDestination2);
+        OutputFile file1 = new OutputFile().withFilePattern("stdout.txt").withDestination(outputFileDestination).withUploadOptions(outputFileUploadOptions);
+        OutputFile file2 = new OutputFile().withFilePattern("stderr.txt").withDestination(outputFileDestination2).withUploadOptions(outputFileUploadOptions);
+
+        List<OutputFile> outputFiles = new ArrayList<>();
+        outputFiles.add(file1);
+        outputFiles.add(file2);
+
+        TaskAddParameter taskAddParameter = new TaskAddParameter().withId(taskId)
+                .withContainerSettings(containerSettings)
+                .withCommandLine("echo " + taskId + " Start").withOutputFiles(outputFiles);
+
+
+        try {
+            batchClient.taskOperations().createTask(jobId, taskAddParameter);
             System.out.println("Worker Job Submitted:" + taskId);
         } catch (IOException e) {
             System.out.println("Unexpected exception when creating task" + e);

@@ -71,13 +71,13 @@ public class AzureBatchWorkerRunner implements CommandLineRunner {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis()) // this is to make it as a new instance of the job so that it can run again.
                 .toJobParameters();
-        System.out.println("-------run manager 0.0.7 ----------");
+        System.out.println("-------run manager 0.0.8 ----------");
         jobLauncher.run(job, jobParameters);
     }
 
 
     private void runWorker() throws Exception {
-        System.out.println("-------run worker 0.0.7 ----------");
+        System.out.println("-------run worker 0.0.8 ----------");
         BeanFactoryStepLocator stepLocator = new BeanFactoryStepLocator();
         stepLocator.setBeanFactory(configurableApplicationContext);
         Long jobExecutionId = Long.parseLong(environment.getProperty(DeployerPartitionHandler.SPRING_CLOUD_TASK_JOB_EXECUTION_ID.replaceAll("\\.|-", "_").toUpperCase()));
